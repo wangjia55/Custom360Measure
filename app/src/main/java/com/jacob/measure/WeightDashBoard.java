@@ -11,6 +11,9 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
+
 /**
  * Package : com.jacob.measure
  * Author : jacob
@@ -18,8 +21,6 @@ import android.view.View;
  * Description : 这个类是用来xxx
  */
 public class WeightDashBoard extends View {
-    private int mWeight = 50;
-
     private Bitmap mBitmapDash;
     private Bitmap mBitmapIndicator;
     private Paint mTextPaint;
@@ -27,9 +28,13 @@ public class WeightDashBoard extends View {
 
     private int mTextSize = dpToPx(20);
     private int mTextColor = 0xffff4546;
+
     private String mText;
     private int mTextWidth;
     private int mTextHeight;
+    private int angle;
+    private int lastAngle;
+    private float lastWeight = 0;
 
     public WeightDashBoard(Context context) {
         this(context, null);
@@ -49,7 +54,7 @@ public class WeightDashBoard extends View {
         mBitmapPaint = new Paint();
         mBitmapPaint.setAntiAlias(true);
 
-        mText = String.valueOf(mWeight) + "KG";
+        mText = String.valueOf(0) + "KG";
         mTextWidth = (int) mTextPaint.measureText(mText, 0, mText.length());
         Rect rect = new Rect();
         mTextPaint.getTextBounds(mText, 0, mText.length(), rect);
@@ -58,30 +63,89 @@ public class WeightDashBoard extends View {
         mBitmapDash = BitmapFactory.decodeResource(getResources(), R.mipmap.s_weight_rule);
         mBitmapIndicator = BitmapFactory.decodeResource(getResources(), R.mipmap.s_w_hand);
 
+        setWeight(0);
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 //        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        setMeasuredDimension(mBitmapDash.getWidth(), mBitmapDash.getHeight());
+
+        //整个高度设置为图片原来尺寸的一半
+        setMeasuredDimension(mBitmapDash.getWidth(), mBitmapDash.getHeight() / 2);
     }
 
 
     @Override
     protected void onDraw(Canvas canvas) {
 //        super.onDraw(canvas);
+        canvas.save();
         Rect rectD = new Rect(0, 0, mBitmapDash.getWidth(), mBitmapDash.getHeight());
+        canvas.rotate(angle, getMeasuredWidth() / 2, mBitmapDash.getHeight() / 2);
         canvas.drawBitmap(mBitmapDash, null, rectD, mBitmapPaint);
+        canvas.restore();
         canvas.drawBitmap(mBitmapIndicator, null, rectD, mBitmapPaint);
-        canvas.drawText(mText, mBitmapDash.getWidth() / 2 - mTextWidth / 2, mBitmapDash.getHeight() / 2 + mTextHeight / 2, mTextPaint);
+
+        mText = formatDecimalRound(lastWeight, 1) + "KG";
+        mTextWidth = (int) mTextPaint.measureText(mText, 0, mText.length());
+        canvas.drawText(mText, mBitmapDash.getWidth() / 2 - mTextWidth / 2, mBitmapDash.getHeight() / 3 + mTextHeight, mTextPaint);
     }
 
     private int dpToPx(int dp) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
     }
 
+    float startX = 0;
+
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        return super.onTouchEvent(event);
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                startX = event.getX();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                float distance = event.getX() - startX;
+                angle = lastAngle + (int) (distance * 1.0f / getMeasuredWidth() * 180);
+                if (angle % 2 != 0) {
+                    angle++;
+                }
+//                Log.e("TAG", angle + "");
+                lastWeight = 90.0f * (1 - angle / 360.0f);
+                if (lastWeight < 0) {
+                    lastWeight = 90 + lastWeight;
+                    lastAngle = 0;
+                }
+                invalidate();
+                break;
+            case MotionEvent.ACTION_UP:
+                lastAngle = angle;
+                startX = 0;
+                break;
+        }
+        return true;
+    }
+
+    public void setWeight(float weight) {
+        lastWeight = weight;
+        angle = (int) Math.ceil(weight / 90.0f * 360);
+    }
+
+    public String formatDecimalRound(double number, int digits) {
+        String source = String.valueOf(number);
+        double result = new BigDecimal(source).setScale(digits, BigDecimal.ROUND_HALF_UP).doubleValue();
+        return formatDecimal(result, digits);
+    }
+
+    public String formatDecimal(double number, int digits) {
+
+        StringBuffer a = new StringBuffer();
+        for (int i = 0; i < digits; i++) {
+            if (i == 0)
+                a.append(".");
+            a.append("0");
+        }
+        DecimalFormat nf = new DecimalFormat("###,###,###,##0" + a.toString());
+        String formatted = nf.format(number);
+        return formatted;
     }
 }
