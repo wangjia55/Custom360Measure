@@ -21,6 +21,8 @@ import java.text.DecimalFormat;
  * Description : 这个类是用来xxx
  */
 public class WeightDashBoard extends View {
+    public static final float MAX_VALUE = 90.0F;
+
     private Bitmap mBitmapDash;
     private Bitmap mBitmapIndicator;
     private Paint mTextPaint;
@@ -110,11 +112,23 @@ public class WeightDashBoard extends View {
                     angle++;
                 }
 //                Log.e("TAG", angle + "");
-                lastWeight = 90.0f * (1 - angle / 360.0f);
+                if (angle >= 0) {
+                    lastWeight = MAX_VALUE * (1 - angle / 360.0f);
+                } else {
+                    lastWeight = MAX_VALUE * (Math.abs(angle) / 360.0f);
+                }
+
                 if (lastWeight < 0) {
-                    lastWeight = 90 + lastWeight;
+                    lastWeight = MAX_VALUE + lastWeight;
                     lastAngle = 0;
                 }
+
+                if (lastWeight == MAX_VALUE) {
+                    lastAngle = 0;
+                    lastWeight = 0;
+                }
+
+
                 invalidate();
                 break;
             case MotionEvent.ACTION_UP:
@@ -127,7 +141,7 @@ public class WeightDashBoard extends View {
 
     public void setWeight(float weight) {
         lastWeight = weight;
-        angle = (int) Math.ceil(weight / 90.0f * 360);
+        angle = (int) Math.ceil(weight / MAX_VALUE * 360);
     }
 
     public String formatDecimalRound(double number, int digits) {
@@ -147,5 +161,9 @@ public class WeightDashBoard extends View {
         DecimalFormat nf = new DecimalFormat("###,###,###,##0" + a.toString());
         String formatted = nf.format(number);
         return formatted;
+    }
+
+    public float getWeight() {
+        return lastWeight;
     }
 }
